@@ -128,7 +128,7 @@
             document.getElementById('reportId').textContent = `#${reportId}`;
 
             try {
-                const response = await fetch(`http://localhost:5000/api/incidents/${reportId}`, {
+                const response = await fetch(`https://ranad77.pythonanywhere.com/api/incidents/${reportId}`, {
                     headers: {
                         'Authorization': `Bearer ${auth.token}`
                     }
@@ -260,7 +260,7 @@
             const newStatus = document.getElementById('statusSelect').value;
 
             try {
-                const response = await fetch(`http://localhost:5000/api/incidents/${reportId}`, {
+                const response = await fetch(`https://ranad77.pythonanywhere.com/api/incidents/${reportId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
