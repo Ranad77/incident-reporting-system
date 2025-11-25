@@ -255,7 +255,7 @@
 
         async function loadAdminDashboard(auth) {
             try {
-                const response = await fetch('https://ranad77.pythonanywhere.com/api/incidents', {
+                const response = await fetch('https://incident-reporting-system.onrender.com/api/incidents', {
                     headers: {
                         'Authorization': `Bearer ${auth.token}`
                     }
