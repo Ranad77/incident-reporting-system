@@ -8,9 +8,11 @@ import os
 import json
 from functools import wraps
 
-app = Flask(__name__, 
-            template_folder='templates',
-            static_folder='static')
+app = Flask(
+    __name__,
+    template_folder='templates',
+    static_folder='static'
+)
 
 # Configuration
 app.config['SECRET_KEY'] = 'uoh-incident-reporting-secret-key-2025'
@@ -19,7 +21,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize
 db = SQLAlchemy(app)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Allow CORS for API calls from any origin (fine for testing; lock down for production)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Database Models
 class User(db.Model):
@@ -42,44 +45,78 @@ class Incident(db.Model):
     incident_datetime = db.Column(db.DateTime)
     severity = db.Column(db.String(20), default='medium')
     status = db.Column(db.String(50), default='Submitted')
-    images = db.Column(db.Text)  # NEW: Store images as JSON string
+    images = db.Column(db.Text)  # store images as JSON string
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    
+
     reporter = db.relationship('User', backref='incidents')
+
 
 # Token required decorator
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization')
-        
+
         if not token:
             return jsonify({'success': False, 'message': 'Token is missing'}), 401
-        
+
         try:
             if token.startswith('Bearer '):
                 token = token.split(' ')[1]
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = User.query.get(data['user_id'])
-        except:
-            return jsonify({'success': False, 'message': 'Token is invalid'}), 401
-        
+            if not current_user:
+                return jsonify({'success': False, 'message': 'User not found'}), 401
+        except Exception as e:
+            return jsonify({'success': False, 'message': 'Token is invalid', 'error': str(e)}), 401
+
         return f(current_user, *args, **kwargs)
-    
+
     return decorated
 
-# Routes
+
+# ---------- Page routes (render templates) ----------
+# Serve the login page at root
 @app.route('/')
 def index():
-    return send_from_directory('templates', 'login.html')
+    return render_template('login.html')
 
-@app.route('/<path:path>')
-def serve_file(path):
-    if path.endswith('.html'):
-        return send_from_directory('templates', path)
-    else:
-        return send_from_directory('static', path)
+# Explicit routes for each HTML template you have
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/register')
+def register_page():
+    return render_template('register.html')
+
+@app.route('/dashboard')
+def dashboard_page():
+    return render_template('dashboard.html')
+
+@app.route('/my-reports')
+def my_reports_page():
+    return render_template('my-reports.html')
+
+@app.route('/report-incident')
+def report_incident_page():
+    return render_template('report-incident.html')
+
+@app.route('/admin-panel')
+def admin_panel_page():
+    return render_template('admin-panel.html')
+
+@app.route('/view-report')
+def view_report_page():
+    return render_template('view-report.html')
+
+
+# Serve static files (CSS/JS/images)
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(app.static_folder, filename)
+
 
 # Password validation function
 def validate_password(password):
@@ -94,40 +131,44 @@ def validate_password(password):
         return 'Password must include at least one special character (!@#$%^&*_-+=?)'
     return None
 
-# Auth Routes
+
+# ---------- Auth Routes (API) ----------
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
-    
+
+    if not data:
+        return jsonify({'success': False, 'message': 'No input data provided'}), 400
+
     # Check if user exists
-    if User.query.filter_by(email=data['email']).first():
+    if User.query.filter_by(email=data.get('email')).first():
         return jsonify({'success': False, 'message': 'User already exists'}), 400
-    
+
     # Validate password strength
-    password_error = validate_password(data['password'])
+    password_error = validate_password(data.get('password', ''))
     if password_error:
         return jsonify({'success': False, 'message': password_error}), 400
-    
+
     # Create user
     hashed_password = generate_password_hash(data['password'])
     new_user = User(
-        name=data['name'],
-        email=data['email'],
+        name=data.get('name'),
+        email=data.get('email'),
         password=hashed_password,
         role=data.get('role', 'student'),
         student_id=data.get('studentId'),
         department=data.get('department')
     )
-    
+
     db.session.add(new_user)
     db.session.commit()
-    
+
     # Generate token
     token = jwt.encode({
         'user_id': new_user.id,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
     }, app.config['SECRET_KEY'], algorithm="HS256")
-    
+
     return jsonify({
         'success': True,
         'message': 'User registered successfully',
@@ -140,24 +181,27 @@ def register():
         }
     }), 201
 
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.get_json()
-    
-    user = User.query.filter_by(email=data['email']).first()
-    
-    if not user or not check_password_hash(user.password, data['password']):
+    if not data:
+        return jsonify({'success': False, 'message': 'No input data provided'}), 400
+
+    user = User.query.filter_by(email=data.get('email')).first()
+
+    if not user or not check_password_hash(user.password, data.get('password', '')):
         return jsonify({'success': False, 'message': 'Invalid credentials'}), 401
-    
+
     if not user.is_active:
         return jsonify({'success': False, 'message': 'Account is deactivated'}), 403
-    
+
     # Generate token
     token = jwt.encode({
         'user_id': user.id,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
     }, app.config['SECRET_KEY'], algorithm="HS256")
-    
+
     return jsonify({
         'success': True,
         'message': 'Login successful',
@@ -171,12 +215,13 @@ def login():
         }
     })
 
-# Incident Routes
+
+# ---------- Incident API ----------
 @app.route('/api/incidents', methods=['GET'])
 @token_required
 def get_incidents(current_user):
     incidents = Incident.query.all()
-    
+
     result = []
     for incident in incidents:
         result.append({
@@ -195,17 +240,18 @@ def get_incidents(current_user):
                 'role': incident.reporter.role
             }
         })
-    
+
     return jsonify({'success': True, 'data': result})
+
 
 @app.route('/api/incidents/<int:incident_id>', methods=['GET'])
 @token_required
 def get_incident(current_user, incident_id):
     incident = Incident.query.get(incident_id)
-    
+
     if not incident:
         return jsonify({'success': False, 'message': 'Incident not found'}), 404
-    
+
     result = {
         '_id': str(incident.id),
         'incidentType': incident.incident_type,
@@ -225,32 +271,34 @@ def get_incident(current_user, incident_id):
             'department': incident.reporter.department
         }
     }
-    
+
     return jsonify({'success': True, 'data': result})
+
 
 @app.route('/api/incidents', methods=['POST'])
 @token_required
 def create_incident(current_user):
     data = request.get_json()
-    
-    # Get images from request (if any)
+    if not data:
+        return jsonify({'success': False, 'message': 'No input data provided'}), 400
+
     images = data.get('images', [])
     images_json = json.dumps(images) if images else None
-    
+
     new_incident = Incident(
         reported_by=current_user.id,
-        incident_type=data['incidentType'],
-        description=data['description'],
+        incident_type=data.get('incidentType'),
+        description=data.get('description'),
         location=data.get('location'),
         incident_datetime=datetime.datetime.fromisoformat(data.get('incidentDateTime', datetime.datetime.utcnow().isoformat())),
         severity=data.get('severity', 'medium'),
         status='Submitted',
         images=images_json
     )
-    
+
     db.session.add(new_incident)
     db.session.commit()
-    
+
     return jsonify({
         'success': True,
         'message': 'Incident created successfully',
@@ -261,43 +309,47 @@ def create_incident(current_user):
         }
     }), 201
 
+
 @app.route('/api/incidents/<int:id>', methods=['PUT'])
 @token_required
 def update_incident(current_user, id):
     incident = Incident.query.get(id)
-    
+
     if not incident:
         return jsonify({'success': False, 'message': 'Incident not found'}), 404
-    
+
     data = request.get_json()
-    
+
     if 'status' in data:
         incident.status = data['status']
     if 'severity' in data:
         incident.severity = data['severity']
-    
+
     incident.updated_at = datetime.datetime.utcnow()
     db.session.commit()
-    
+
     return jsonify({'success': True, 'message': 'Incident updated successfully'})
+
 
 @app.route('/api/incidents/<int:id>', methods=['DELETE'])
 @token_required
 def delete_incident(current_user, id):
     incident = Incident.query.get(id)
-    
+
     if not incident:
         return jsonify({'success': False, 'message': 'Incident not found'}), 404
-    
+
     db.session.delete(incident)
     db.session.commit()
-    
+
     return jsonify({'success': True, 'message': 'Incident deleted successfully'})
+
 
 # Initialize database
 with app.app_context():
     db.create_all()
     print("Database is initialized!")
+
 
 if __name__ == '__main__':
     import os
