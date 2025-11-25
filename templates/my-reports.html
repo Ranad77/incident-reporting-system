@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Reports - Incident Reporting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Admin Navigation -->
+    <nav class="navbar" id="adminNav" style="display: none;">
+        <div class="navbar-brand">
+            <img src="uoh-logo.png" alt="UOH Logo" class="navbar-logo">
+            <div>
+                <h1>Incident Reporting System</h1>
+                <p>University of Hail - Cybersecurity Division</p>
+            </div>
+        </div>
+        
+        <div class="navbar-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="admin-panel.html">Admin Panel</a>
+        </div>
+        
+        <div class="navbar-user">
+            <span id="adminUserName">User</span>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Student/Staff Simple Header -->
+    <div class="simple-header" id="simpleHeader" style="display: none;">
+        <div class="simple-header-content">
+            <img src="uoh-logo.png" alt="UOH Logo" class="simple-logo">
+            <div class="simple-header-info">
+                <h1>Incident Reporting System</h1>
+                <p>University of Hail</p>
+            </div>
+            <div class="simple-header-user">
+                <span id="simpleUserName">User</span>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="page-header">
+            <h1>My Reports</h1>
+            <p>View and track your submitted incident reports</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>All Reports (<span id="reportCount">0</span>)</h2>
+                <select id="filterStatus" class="filter-select">
+                    <option value="all">All Status</option>
+                    <option value="Submitted">Submitted</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="Investigating">Investigating</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Report ID</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Severity</th>
+                        <th>Date Submitted</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr>
+                        <td colspan="6" style="text-align: center;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            
+            if (!token || !user) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            
+            // Show appropriate navigation based on role
+            if (user.role === 'admin') {
+                document.getElementById('adminNav').style.display = 'flex';
+                document.getElementById('simpleHeader').style.display = 'none';
+                document.getElementById('adminUserName').textContent = `${user.name} (Admin)`;
+            } else {
+                document.getElementById('adminNav').style.display = 'none';
+                document.getElementById('simpleHeader').style.display = 'block';
+                const roleText = user.role === 'staff' ? 'Staff' : 'Student';
+                document.getElementById('simpleUserName').textContent = `${user.name} (${roleText})`;
+            }
+            
+            return { token, user };
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        let allReports = [];
+
+        async function loadReports() {
+            const auth = checkAuth();
+            if (!auth) return;
+
+            try {
+                const response = await fetch('http://localhost:5000/api/incidents', {
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allReports = data.data.filter(report => report.reportedBy._id === auth.user.id);
+                    displayReports(allReports);
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.getElementById('reportsTable').innerHTML = 
+                    '<tr><td colspan="6" style="text-align: center;">Error loading reports</td></tr>';
+            }
+        }
+
+        function displayReports(reports) {
+            const tableBody = document.getElementById('reportsTable');
+            document.getElementById('reportCount').textContent = reports.length;
+
+            if (reports.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No reports found. Start by reporting an incident!</td></tr>';
+            } else {
+                tableBody.innerHTML = reports.map(report => `
+                    <tr onclick="window.location.href='view-report.html?id=${report._id}'" style="cursor: pointer;">
+                        <td>#${report._id.slice(-6)}</td>
+                        <td>${report.incidentType}</td>
+                        <td>${report.description.substring(0, 50)}...</td>
+                        <td><span class="badge badge-${report.status.toLowerCase().replace(' ', '-')}">${report.status}</span></td>
+                        <td><span class="badge badge-${report.severity.toLowerCase()}">${report.severity}</span></td>
+                        <td>${new Date(report.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        document.getElementById('filterStatus').addEventListener('change', (e) => {
+            const filter = e.target.value;
+            const filtered = filter === 'all' ? allReports : allReports.filter(r => r.status === filter);
+            displayReports(filtered);
+        });
+
+        loadReports();
+    </script>
+</body>
+</html>

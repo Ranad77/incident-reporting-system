@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Incident Reporting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img src="uoh-logo.png" alt="UOH Logo" class="auth-logo-img-large">
+                <h2>Create Account</h2>
+                <p>University of Hail - Incident Reporting System</p>
+            </div>
+
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            <div id="success-message" class="success-message" style="display: none;"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="name" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select id="role" required>
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>University Email *</label>
+                    <input type="email" id="email" placeholder="s20xxxxxxx@uoh.edu.sa" required>
+                    <small class="form-hint" id="emailHint">Format: s[9-digit ID]@uoh.edu.sa</small>
+                </div>
+
+                <div class="form-group" id="studentIdGroup">
+                    <label>Student ID</label>
+                    <input type="text" id="studentId" placeholder="20xxxxxxx" maxlength="9" pattern="\d{9}">
+                    <small class="form-hint">9-digit student ID starting with 20</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Department *</label>
+                    <select id="department" required>
+                        <option value="">Select your department</option>
+                        <option value="Information and Computer Science">Information and Computer Science</option>
+                        <option value="Computer Engineering">Computer Engineering</option>
+                        <option value="Software Engineering">Software Engineering</option>
+                        <option value="Information Security">Information Security</option>
+                        <option value="Data and Artificial Intelligence">Data and Artificial Intelligence</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="otherDepartmentGroup" style="display: none;">
+                    <label>Specify Department *</label>
+                    <input type="text" id="otherDepartment" placeholder="Enter your department">
+                </div>
+
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" id="password" placeholder="Enter a strong password" required>
+                    <small class="form-hint password-requirements">
+                        Must be at least 8 characters with uppercase, lowercase, and special character (!@#$%^&*_-+=?)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label>Confirm Password *</label>
+                    <input type="password" id="confirmPassword" placeholder="Re-enter your password" required>
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    <span id="registerBtnText">Register</span>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Login here</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const roleSelect = document.getElementById('role');
+        const emailInput = document.getElementById('email');
+        const emailHint = document.getElementById('emailHint');
+        const studentIdGroup = document.getElementById('studentIdGroup');
+        const departmentSelect = document.getElementById('department');
+        const otherDepartmentGroup = document.getElementById('otherDepartmentGroup');
+
+        roleSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'student') {
+                emailHint.textContent = 'Format: s[9-digit ID]@uoh.edu.sa';
+                studentIdGroup.style.display = 'block';
+            } else {
+                emailHint.textContent = 'Use your UOH staff email';
+                studentIdGroup.style.display = 'none';
+            }
+        });
+
+        // Show/hide other department field
+        departmentSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Other') {
+                otherDepartmentGroup.style.display = 'block';
+                document.getElementById('otherDepartment').required = true;
+            } else {
+                otherDepartmentGroup.style.display = 'none';
+                document.getElementById('otherDepartment').required = false;
+            }
+        });
+
+        // Password validation function
+        function validatePassword(password) {
+            const minLength = 8;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*_\-+=?]/.test(password);
+            
+            if (password.length < minLength) {
+                return 'Password must be at least 8 characters long';
+            }
+            if (!hasUpperCase) {
+                return 'Password must include at least one uppercase letter';
+            }
+            if (!hasLowerCase) {
+                return 'Password must include at least one lowercase letter';
+            }
+            if (!hasSpecialChar) {
+                return 'Password must include at least one special character (!@#$%^&*_-+=?)';
+            }
+            return null; // Password is valid
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const role = document.getElementById('role').value;
+            const studentId = document.getElementById('studentId').value;
+            let department = document.getElementById('department').value;
+            
+            // If "Other" is selected, use the custom department value
+            if (department === 'Other') {
+                department = document.getElementById('otherDepartment').value;
+            }
+            
+            const errorMsg = document.getElementById('error-message');
+            const successMsg = document.getElementById('success-message');
+            const btnText = document.getElementById('registerBtnText');
+            
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            // Validate password strength
+            const passwordError = validatePassword(password);
+            if (passwordError) {
+                errorMsg.textContent = passwordError;
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorMsg.textContent = 'Passwords do not match';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            if (role === 'student') {
+                const studentEmailRegex = /^s\d{9}@uoh\.edu\.sa$/;
+                if (!studentEmailRegex.test(email)) {
+                    errorMsg.textContent = 'Student email must be in format: s[9-digit ID]@uoh.edu.sa';
+                    errorMsg.style.display = 'block';
+                    return;
+                }
+            } else if (!email.includes('@uoh.edu.sa')) {
+                errorMsg.textContent = 'Please use a valid UOH email address';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            btnText.textContent = 'Creating Account...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password, role, studentId, department })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successMsg.textContent = 'Registration successful! Redirecting to login...';
+                    successMsg.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    errorMsg.textContent = data.message || 'Registration failed';
+                    errorMsg.style.display = 'block';
+                    btnText.textContent = 'Register';
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Connection error. Please try again.';
+                errorMsg.style.display = 'block';
+                btnText.textContent = 'Register';
+            }
+        });
+    </script>
+</body>
+</html>

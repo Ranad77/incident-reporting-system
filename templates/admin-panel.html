@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Incident Reporting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="uoh-logo.png" alt="UOH Logo" class="navbar-logo">
+            <div>
+                <h1>Incident Reporting System</h1>
+                <p>University of Hail - Cybersecurity Division</p>
+            </div>
+        </div>
+        
+        <div class="navbar-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="admin-panel.html" class="active">Admin Panel</a>
+        </div>
+        
+        <div class="navbar-user">
+            <span id="userName">User</span>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <h1>Admin Panel</h1>
+            <p>Manage all incident reports</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card clickable" onclick="filterReports('all')" id="totalCard">
+                <div class="stat-icon teal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"/>
+                        <path d="M18 17V9"/>
+                        <path d="M13 17V5"/>
+                        <path d="M8 17v-3"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalReports">0</h3>
+                    <p>Total Reports</p>
+                </div>
+            </div>
+
+            <div class="stat-card clickable" onclick="filterReports('pending')" id="pendingCard">
+                <div class="stat-icon orange">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h3 id="pendingReports">0</h3>
+                    <p>Pending Review</p>
+                </div>
+            </div>
+
+            <div class="stat-card clickable" onclick="filterReports('Resolved')" id="resolvedCard">
+                <div class="stat-icon green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <path d="M22 4L12 14.01l-3-3"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h3 id="resolvedReports">0</h3>
+                    <p>Resolved</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 id="reportsSectionTitle">All Reports</h2>
+                <button onclick="filterReports('all')" class="btn-secondary" style="padding: 0.5rem 1rem; margin: 0;">
+                    Show All
+                </button>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Reporter</th>
+                        <th>Type</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            
+            if (!token || !user) {
+                window.location.href = 'login.html';
+                return null;
+            }
+
+            if (user.role !== 'admin') {
+                window.location.href = 'dashboard.html';
+                return null;
+            }
+            
+            document.getElementById('userName').textContent = `${user.name} (Admin)`;
+            
+            return { token, user };
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        let allReports = [];
+        let currentFilter = 'all';
+
+        function filterReports(filter) {
+            currentFilter = filter;
+            
+            // Update active state on cards
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active'));
+            
+            let filteredReports = allReports;
+            let title = 'All Reports';
+            
+            if (filter === 'all') {
+                document.getElementById('totalCard').classList.add('active');
+                filteredReports = allReports;
+                title = 'All Reports';
+            } else if (filter === 'pending') {
+                document.getElementById('pendingCard').classList.add('active');
+                filteredReports = allReports.filter(r => r.status === 'Submitted' || r.status === 'Under Review');
+                title = 'Pending Review';
+            } else if (filter === 'Resolved') {
+                document.getElementById('resolvedCard').classList.add('active');
+                filteredReports = allReports.filter(r => r.status === 'Resolved');
+                title = 'Resolved Reports';
+            }
+            
+            document.getElementById('reportsSectionTitle').textContent = `${title} (${filteredReports.length})`;
+            displayReports(filteredReports);
+        }
+
+        async function loadReports() {
+            const auth = checkAuth();
+            if (!auth) return;
+
+            try {
+                const response = await fetch('http://localhost:5000/api/incidents', {
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allReports = data.data;
+                    
+                    document.getElementById('totalReports').textContent = allReports.length;
+                    document.getElementById('pendingReports').textContent = 
+                        allReports.filter(r => r.status === 'Submitted' || r.status === 'Under Review').length;
+                    document.getElementById('resolvedReports').textContent = 
+                        allReports.filter(r => r.status === 'Resolved').length;
+
+                    filterReports('all');
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.getElementById('reportsTable').innerHTML = 
+                    '<tr><td colspan="7" style="text-align: center;">Error loading reports</td></tr>';
+            }
+        }
+
+        function displayReports(reports) {
+            const tableBody = document.getElementById('reportsTable');
+
+            if (reports.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No reports found</td></tr>';
+            } else {
+                tableBody.innerHTML = reports.map(report => `
+                    <tr>
+                        <td>#${report._id.slice(-6)}</td>
+                        <td>
+                            ${report.reportedBy.name}<br>
+                            <small style="color: #9ba3af;">${report.reportedBy.email}</small>
+                        </td>
+                        <td>${report.incidentType}</td>
+                        <td><span class="badge badge-${report.severity.toLowerCase()}">${report.severity}</span></td>
+                        <td>
+                            <select class="status-select" data-id="${report._id}">
+                                <option value="Submitted" ${report.status === 'Submitted' ? 'selected' : ''}>Submitted</option>
+                                <option value="Under Review" ${report.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
+                                <option value="Investigating" ${report.status === 'Investigating' ? 'selected' : ''}>Investigating</option>
+                                <option value="Resolved" ${report.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                                <option value="Closed" ${report.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                            </select>
+                        </td>
+                        <td>${new Date(report.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <button onclick="window.location.href='view-report.html?id=${report._id}'" 
+                                    class="btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; margin-right: 0.5rem;">
+                                View
+                            </button>
+                            <button onclick="deleteReport('${report._id}')" 
+                                    class="btn-danger" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.querySelectorAll('.status-select').forEach(select => {
+                    select.addEventListener('change', (e) => {
+                        updateStatus(e.target.dataset.id, e.target.value);
+                    });
+                });
+            }
+        }
+
+        async function updateStatus(id, newStatus) {
+            const auth = checkAuth();
+            if (!auth) return;
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/incidents/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${auth.token}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Status updated successfully!');
+                    loadReports();
+                } else {
+                    alert('Failed to update status');
+                }
+            } catch (error) {
+                alert('Error updating status');
+            }
+        }
+
+        async function deleteReport(id) {
+            if (!confirm('Are you sure you want to delete this report?')) return;
+
+            const auth = checkAuth();
+            if (!auth) return;
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/incidents/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Report deleted successfully!');
+                    loadReports();
+                } else {
+                    alert('Failed to delete report');
+                }
+            } catch (error) {
+                alert('Error deleting report');
+            }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>

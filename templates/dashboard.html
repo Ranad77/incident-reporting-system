@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Incident Reporting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation - Only visible for admin -->
+    <nav class="navbar" id="adminNav" style="display: none;">
+        <div class="navbar-brand">
+            <img src="uoh-logo.png" alt="UOH Logo" class="navbar-logo">
+            <div>
+                <h1>Incident Reporting System</h1>
+                <p>University of Hail - Cybersecurity Division</p>
+            </div>
+        </div>
+        
+        <div class="navbar-links">
+            <a href="dashboard.html" class="active">Dashboard</a>
+            <a href="admin-panel.html">Admin Panel</a>
+        </div>
+        
+        <div class="navbar-user">
+            <span id="adminUserName">User</span>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Simple header for Student/Staff (NO navigation links) -->
+    <div class="simple-header" id="simpleHeader" style="display: none;">
+        <div class="simple-header-content">
+            <img src="uoh-logo.png" alt="UOH Logo" class="simple-logo">
+            <div class="simple-header-info">
+                <h1>Incident Reporting System</h1>
+                <p>University of Hail</p>
+            </div>
+            <div class="simple-header-user">
+                <span id="simpleUserName">User</span>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <!-- Admin Dashboard - Full access with clickable stats -->
+        <div id="adminDashboard" style="display: none;">
+            <div class="page-header">
+                <h1>Admin Dashboard</h1>
+                <p>Welcome back, <span id="adminWelcomeName">Admin</span>! Click on any stat to filter reports.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card clickable" onclick="filterReports('all')" id="totalCard">
+                    <div class="stat-icon teal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18 17V9"/>
+                            <path d="M13 17V5"/>
+                            <path d="M8 17v-3"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalReports">0</h3>
+                        <p>Total Reports</p>
+                    </div>
+                </div>
+
+                <div class="stat-card clickable" onclick="filterReports('Under Review')" id="reviewCard">
+                    <div class="stat-icon orange">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="underReview">0</h3>
+                        <p>Under Review</p>
+                    </div>
+                </div>
+
+                <div class="stat-card clickable" onclick="filterReports('Resolved')" id="resolvedCard">
+                    <div class="stat-icon green">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <path d="M22 4L12 14.01l-3-3"/>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="resolved">0</h3>
+                        <p>Resolved</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 id="reportsSectionTitle">All Reports</h2>
+                    <button onclick="filterReports('all')" class="btn-secondary" style="padding: 0.5rem 1rem; margin: 0;">
+                        Show All
+                    </button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Reporter</th>
+                            <th>Status</th>
+                            <th>Severity</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTable">
+                        <tr>
+                            <td colspan="7" style="text-align: center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Student/Staff View: ONLY 2 action cards, NO stats, NO nav -->
+        <div id="studentStaffView" style="display: none;">
+            <div class="welcome-section">
+                <h1>Welcome, <span id="studentWelcomeName">User</span>!</h1>
+                <p class="welcome-subtitle">What would you like to do today?</p>
+            </div>
+
+            <div class="quick-actions">
+                <div class="action-card" onclick="window.location.href='report-incident.html'">
+                    <div class="action-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                    </div>
+                    <h3>Create New Report</h3>
+                    <p>Report a new security incident or concern</p>
+                </div>
+
+                <div class="action-card" onclick="window.location.href='my-reports.html'">
+                    <div class="action-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 2v6h6"/>
+                            <path d="M16 13H8"/>
+                            <path d="M16 17H8"/>
+                            <path d="M10 9H8"/>
+                        </svg>
+                    </div>
+                    <h3>View My Reports</h3>
+                    <p>Check the status of your submitted reports</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allIncidents = [];
+        let currentFilter = 'all';
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            
+            if (!token || !user) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            
+            // CRITICAL: Show different views based on role
+            if (user.role === 'admin') {
+                // Admin: Full dashboard with nav, stats, NO chart
+                document.getElementById('adminNav').style.display = 'flex';
+                document.getElementById('adminDashboard').style.display = 'block';
+                document.getElementById('simpleHeader').style.display = 'none';
+                document.getElementById('studentStaffView').style.display = 'none';
+                document.getElementById('adminUserName').textContent = `${user.name} (Admin)`;
+                document.getElementById('adminWelcomeName').textContent = user.name;
+            } else {
+                // Student AND Staff: Same simple view (2 boxes only, NO stats, NO nav)
+                document.getElementById('adminNav').style.display = 'none';
+                document.getElementById('adminDashboard').style.display = 'none';
+                document.getElementById('simpleHeader').style.display = 'block';
+                document.getElementById('studentStaffView').style.display = 'block';
+                const roleText = user.role === 'staff' ? 'Staff' : 'Student';
+                document.getElementById('simpleUserName').textContent = `${user.name} (${roleText})`;
+                document.getElementById('studentWelcomeName').textContent = user.name;
+            }
+            
+            return { token, user };
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        function filterReports(filter) {
+            currentFilter = filter;
+            
+            // Update active state on cards
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active'));
+            
+            let filteredIncidents = allIncidents;
+            let title = 'All Reports';
+            
+            if (filter === 'all') {
+                document.getElementById('totalCard').classList.add('active');
+                filteredIncidents = allIncidents;
+                title = 'All Reports';
+            } else if (filter === 'Under Review') {
+                document.getElementById('reviewCard').classList.add('active');
+                filteredIncidents = allIncidents.filter(i => i.status === 'Under Review' || i.status === 'Submitted');
+                title = 'Reports Under Review';
+            } else if (filter === 'Resolved') {
+                document.getElementById('resolvedCard').classList.add('active');
+                filteredIncidents = allIncidents.filter(i => i.status === 'Resolved');
+                title = 'Resolved Reports';
+            }
+            
+            document.getElementById('reportsSectionTitle').textContent = `${title} (${filteredIncidents.length})`;
+            displayReports(filteredIncidents);
+        }
+
+        function displayReports(incidents) {
+            const tableBody = document.getElementById('reportsTable');
+            
+            if (incidents.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No reports found</td></tr>';
+            } else {
+                tableBody.innerHTML = incidents.map(report => `
+                    <tr>
+                        <td>#${report._id.slice(-6)}</td>
+                        <td>${report.incidentType}</td>
+                        <td>
+                            ${report.reportedBy.name}<br>
+                            <small style="color: #9ba3af;">${report.reportedBy.email}</small>
+                        </td>
+                        <td><span class="badge badge-${report.status.toLowerCase().replace(' ', '-')}">${report.status}</span></td>
+                        <td><span class="badge badge-${report.severity.toLowerCase()}">${report.severity}</span></td>
+                        <td>${new Date(report.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <button onclick="window.location.href='view-report.html?id=${report._id}'" class="btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadAdminDashboard(auth) {
+            try {
+                const response = await fetch('http://localhost:5000/api/incidents', {
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allIncidents = data.data;
+
+                    const submitted = allIncidents.filter(i => i.status === 'Submitted').length;
+                    const underReviewCount = allIncidents.filter(i => i.status === 'Under Review' || i.status === 'Submitted').length;
+                    const resolvedCount = allIncidents.filter(i => i.status === 'Resolved').length;
+
+                    document.getElementById('totalReports').textContent = allIncidents.length;
+                    document.getElementById('underReview').textContent = underReviewCount;
+                    document.getElementById('resolved').textContent = resolvedCount;
+
+                    // Show all reports by default
+                    filterReports('all');
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('reportsTable').innerHTML = 
+                    '<tr><td colspan="7" style="text-align: center;">Error loading reports</td></tr>';
+            }
+        }
+
+        async function loadDashboard() {
+            const auth = checkAuth();
+            if (!auth) return;
+
+            // Only load data for admin
+            if (auth.user.role === 'admin') {
+                await loadAdminDashboard(auth);
+            }
+            // Students and staff don't load any dashboard data
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

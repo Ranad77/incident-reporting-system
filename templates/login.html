@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Incident Reporting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img src="uoh-logo.png" alt="UOH Logo" class="auth-logo-img-large">
+                <h2>Welcome</h2>
+                <p>University of Hail - Incident Reporting System</p>
+            </div>
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>University Email</label>
+                    <input type="email" id="email" name="email" placeholder="s20xxxxxxx@uoh.edu.sa" required>
+                    <small class="form-hint">Use your UOH email address</small>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required minlength="6">
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span id="loginBtnText">Login</span>
+                </button>
+            </form>
+            <div class="auth-footer">
+                Don't have an account? <a href="register.html">Register here</a>
+            </div>
+        </div>
+    </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-message');
+        const btnText = document.getElementById('loginBtnText');
+        
+        console.log('Attempting login with:', email);
+        
+        btnText.textContent = 'Logging in...';
+        errorMsg.style.display = 'none';
+        try {
+            console.log('Sending request to backend...');
+            
+            const response = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+            console.log('Response status:', response.status);
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            if (data.success) {
+                console.log('Login successful!');
+                console.log('Saving token:', data.token);
+                console.log('User data:', data.user);
+                
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                console.log('Token saved:', localStorage.getItem('token'));
+                console.log('User saved:', localStorage.getItem('user'));
+                
+                console.log('Redirecting to dashboard...');
+                window.location.href = 'dashboard.html';
+            } else {
+                console.log('Login failed:', data.message);
+                errorMsg.textContent = data.message || 'Login failed';
+                errorMsg.style.display = 'block';
+                btnText.textContent = 'Login';
+            }
+        } catch (error) {
+            console.log('ERROR:', error);
+            errorMsg.textContent = 'Connection error. Make sure backend is running.';
+            errorMsg.style.display = 'block';
+            btnText.textContent = 'Login';
+        }
+    });
+</script>
+</body>
+</html>
